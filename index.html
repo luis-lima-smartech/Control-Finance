@@ -576,23 +576,27 @@
             }
 
             /* Income row no mobile: empilha os campos */
-            .income-row {
-                flex-direction: column;
-                gap: 8px;
-                background: #232d3b;
-                border: 1px solid var(--border);
-                border-radius: 10px;
-                padding: 12px;
+               .income-row {
+               flex-direction: column !important;
+               gap: 8px;
+               background: #232d3b;
+               border: 1px solid var(--border);
+               border-radius: 10px;
+               padding: 12px;
+               margin-bottom: 10px;
             }
 
-            .income-row input {
-                width: 100%;
-                box-sizing: border-box;
-                padding: 12px 14px;
-                font-size: 1em;
+            .income-row input[type="text"],
+            .income-row input[type="number"] {
+               width: 100% !important;
+               box-sizing: border-box !important;
+               flex: unset !important;
+               padding: 14px !important;
+               font-size: 1em !important;
+               min-height: 48px;
             }
 
-            .flex-2, .flex-1 { flex: unset; width: 100%; }
+            .flex-2, .flex-1 { flex: unset !important; width: 100% !important; }
 
             /* Botão remover menor nas receitas */
             .income-row .btn-remove {
