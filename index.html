@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <!-- Metatags críticas de visualização e comportamento de App Nativo (PWA) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Control Fin">
+    <meta name="theme-color" content="#1a202c">
+    
+    <title>Control Finance - Dashboard</title>
+
+    <!-- Ícone Favicon apontando para o seu arquivo local icone.png -->
+    <link rel="icon" type="image/png" href="icone.png">
+
+    <!-- Ícone dedicado para tela inicial do iOS (Apple Touch Icon apontando para o icone.png) -->
+    <link rel="apple-touch-icon" href="icone.png">
+
+    <!-- Web App Manifest externo (necessário para PWA e geração de APK) -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Importação do Chart.js para os gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg-base: #1a202c;
+            --surface: #2d3748;
+            --surface-hover: #4a5568; 
+            --border: #4a5568;
+            
+            --tech-primary: #00d2ff;
+            --tech-secondary: #3a7bd5;
+            --glow: rgba(0, 210, 255, 0.2);
+            --gradient: linear-gradient(135deg, var(--tech-primary), var(--tech-secondary));
+            
+            --text-main: #e2e8f0;
+            --text-muted: #a0aec0;
+            --positive: #48bb78;
+            --warning: #ecc94b;
+            --negative: #f56565;
+            
+            --font-ui: 'Inter', sans-serif;
+            --font-numbers: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            margin: 0;
+            /* Suporte para notch/bordas infinitas no iOS e Android */
+            padding: calc(40px + env(safe-area-inset-top)) 20px calc(80px + env(safe-area-inset-bottom)) 20px;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 30px 30px;
+            /* Desativa o scroll elástico "rubber-band" e recarregamento acidental por gesto de puxar */
+            overscroll-behavior-y: contain;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Estilo da Dica de Instalação no Celular */
+        .pwa-tip {
+            background: rgba(0, 210, 255, 0.05);
+            border: 1px dashed var(--tech-primary);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.1);
+            animation: pulse-border 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: var(--tech-primary); }
+            50% { border-color: var(--tech-secondary); }
+        }
+
+        .pwa-tip-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pwa-icon-glow {
+            font-size: 1.8em;
+            filter: drop-shadow(0 0 6px var(--tech-primary));
+        }
+
+        .pwa-tip h4 {
+            margin: 0 0 4px 0;
+            color: var(--tech-primary);
+            font-size: 0.95em;
+            font-weight: 700;
+        }
+
+        .pwa-tip p {
+            margin: 0;
+            font-size: 0.8em;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .btn-close-tip {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.4em;
+            cursor: pointer;
+            transition: color 0.2s;
+            padding: 5px;
+            user-select: none;
+        }
+
+        .btn-close-tip:hover {
+            color: var(--negative);
+        }
+
+        .container {
+            max-width: 1000px; 
+            margin: auto;
+            background-color: var(--surface);
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: var(--gradient);
+            border-radius: 16px 16px 0 0;
+        }
+        
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h2 {
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: 1px;
+            font-size: 2em;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            color: transparent;
+            text-transform: uppercase;
+        }
+
+        /* Seletor de Mês */
+        .month-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #1a202c;
+            padding: 8px 15px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .month-selector button {
+            background: transparent;
+            color: var(--tech-primary);
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: 0.2s;
+            padding: 0 10px;
+            user-select: none;
+        }
+
+        .month-selector button:hover {
+            color: #fff;
+            text-shadow: 0 0 10px var(--tech-primary);
+        }
+
+        .month-display {
+            font-weight: 600;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        /* Grid Superior */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background-color: #232d3b;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title::before {
+            content: '';
+            display: block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--tech-primary);
+            box-shadow: 0 0 8px var(--tech-primary);
+        }
+
+        /* Inputs e Linhas */
+        .income-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px 12px;
+            box-sizing: border-box;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-size: 0.9em;
+            font-family: var(--font-ui);
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"] {
+            font-family: var(--font-numbers);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--tech-primary);
+            box-shadow: 0 0 0 3px var(--glow);
+            background-color: #1e2633;
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a0aec0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: 10px auto;
+            padding-right: 30px;
+        }
+
+        .flex-2 { flex: 2; }
+        .flex-1 { flex: 1.2; }
+
+        /* Barra de Saúde Financeira */
+        .health-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: var(--bg-base);
+            border-radius: 4px;
+            margin-top: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .health-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--positive);
+            border-radius: 4px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+            box-shadow: 0 0 10px var(--positive);
+        }
+
+        /* Resumo e Gráfico */
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .summary-label { color: var(--text-muted); font-size: 0.9em; }
+        .summary-value { font-family: var(--font-numbers); font-size: 1.2em; font-weight: 700; }
+        .balance-total { border-bottom: none; margin-top: 5px; padding-top: 10px; border-top: 1px dashed var(--border); }
+        .balance-total .summary-value { font-size: 1.6em; }
+
+        .chart-container {
+            flex-grow: 1;
+            position: relative;
+            margin-top: 20px;
+            min-height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Tabela */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #232d3b;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background-color: var(--surface-hover);
+            color: var(--text-muted);
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background-color: rgba(255,255,255,0.02); }
+
+        .btn-remove {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            font-size: 1.4em;
+            cursor: pointer;
+            padding: 0 5px;
+            border-radius: 4px;
+            transition: 0.2s;
+            user-select: none;
+        }
+        .btn-remove:hover { color: var(--negative); background: rgba(245, 101, 101, 0.1); }
+
+        tfoot tr { background-color: var(--surface-hover); }
+        tfoot td { color: var(--text-main); font-weight: 600; font-size: 1em; }
+
+        /* Botões Ações */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            font-family: var(--font-ui);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        /* Hover apenas em computadores para evitar comportamentos táteis estranhos */
+        @media (hover: hover) {
+            .btn-add:hover { background-color: var(--glow); }
+            .btn-csv:hover { background-color: #718096; }
+            .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 210, 255, 0.4); }
+        }
+
+        .btn-add {
+            background-color: transparent;
+            color: var(--tech-primary);
+            border: 1px solid var(--tech-primary);
+        }
+
+        .btn-csv {
+            background-color: var(--surface-hover);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-save {
+            background: var(--gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.2);
+        }
+
+        /* Utilitários */
+        .positive-text { color: var(--positive); text-shadow: 0 0 10px rgba(72, 187, 120, 0.3); }
+        .negative-text { color: var(--negative); text-shadow: 0 0 10px rgba(245, 101, 101, 0.3); }
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* Barra de Navegação Móvel (Estilo App Nativo) */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(65px + env(safe-area-inset-bottom));
+            background-color: #1e2633;
+            border-top: 1px solid var(--border);
+            grid-template-columns: 1fr 1fr;
+            z-index: 1000;
+            box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.4);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .mobile-nav-btn {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 4px;
+            user-select: none;
+        }
+
+        .mobile-nav-btn.active {
+            color: var(--tech-primary);
+            text-shadow: 0 0 8px rgba(0, 210, 255, 0.3);
+        }
+
+        .mobile-nav-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* --- MELHORIAS EXCLUSIVAS PARA RESPONSIVIDADE MOBILE --- */
+        @media (max-width: 768px) {
+            body {
+                padding: calc(15px + env(safe-area-inset-top)) 10px calc(85px + env(safe-area-inset-bottom)) 10px;
+                background-size: 20px 20px;
+            }
+
+            .container {
+                padding: 15px 12px;
+                border-radius: 12px;
+                box-shadow: none;
+                background: transparent;
+            }
+
+            .container::before {
+                display: none; /* Simplifica o topo no mobile */
+            }
+
+            .header-section {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+                padding-bottom: 12px;
+                margin-bottom: 15px;
+            }
+
+            .month-selector {
+                width: 100%;
+                justify-content: space-between;
+                box-sizing: border-box;
+            }
+
+            /* Habilitar Barra de Abas no Mobile */
+            .mobile-nav {
+                display: grid;
+            }
+
+            /* Controle de Abas Dinâmicas */
+            .tab-content {
+                display: none;
+            }
+
+            .tab-content.active {
+                display: block;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                margin-bottom: 15px;
+            }
+
+            /* Transformar tabelas em cartões nativos de transação */
+            table, thead, tbody, tfoot, tr, th, td {
+                display: block;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tr {
+                border: 1px solid var(--border);
+                margin-bottom: 12px;
+                border-radius: 10px;
+                background-color: #232d3b;
+                padding: 12px;
+            }
+
+            td {
+                border: none;
+                padding: 6px 0;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            td::before {
+                content: attr(data-label);
+                font-size: 0.7em;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                font-weight: 600;
+                margin-bottom: 4px;
+                letter-spacing: 0.5px;
+            }
+
+            td:last-child {
+                align-items: center;
+                flex-direction: row;
+                justify-content: center;
+                border-top: 1px solid rgba(255,255,255,0.05);
+                margin-top: 6px;
+                padding-top: 8px;
+            }
+
+            td:last-child::before {
+                display: none;
+            }
+
+            /* Income row no mobile: empilha os campos */
+            .income-row {
+                flex-direction: column;
+                gap: 8px;
+                background: #232d3b;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 12px;
+            }
+
+            .income-row input {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 12px 14px;
+                font-size: 1em;
+            }
+
+            .flex-2, .flex-1 { flex: unset; width: 100%; }
+
+            /* Botão remover menor nas receitas */
+            .income-row .btn-remove {
+                width: auto;
+                align-self: flex-end;
+                padding: 4px 10px;
+                font-size: 0.75em;
+                background: rgba(245, 101, 101, 0.08);
+                color: var(--negative);
+                border-radius: 6px;
+            }
+
+            .income-row .btn-remove::after {
+                content: " Remover";
+                font-weight: 600;
+            }
+
+            /* Botão remover nas tabelas de despesas */
+            #expense-body .btn-remove {
+                width: 100%;
+                padding: 10px;
+                font-size: 0.85em;
+                background: rgba(245, 101, 101, 0.08);
+                color: var(--negative);
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+            }
+
+            #expense-body .btn-remove::after {
+                content: " Remover Item";
+                font-weight: 600;
+                font-size: 0.85em;
+            }
+
+            tfoot tr {
+                background: transparent;
+                border: none;
+                padding: 0;
+            }
+
+            tfoot td {
+                text-align: center !important;
+                font-size: 1.1em;
+                padding: 10px 0 0 0;
+            }
+
+            tfoot td::before {
+                display: none;
+            }
+
+            .actions {
+                flex-direction: column;
+                gap: 10px;
+                margin-top: 15px;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+                padding: 14px;
+                font-size: 0.9em;
+            }
+
+            .btn-group {
+                width: 100%;
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="header-section">
+            <h2>Control Finance</h2>
+            
+            <!-- Gestão de Meses -->
+            <div class="month-selector">
+                <button onclick="changeMonth(-1)" title="Mês Anterior">&#10094;</button>
+                <div class="month-display" id="current-month-display">Maio 2026</div>
+                <button onclick="changeMonth(1)" title="Próximo Mês">&#10095;</button>
+            </div>
+        </div>
+
+        <!-- Alerta de Instalação Inteligente PWA (Oculta se já estiver rodando standalone como App) -->
+        <div id="pwa-install-tip" class="pwa-tip" style="display: none;">
+            <div class="pwa-tip-content">
+                <span class="pwa-icon-glow">📱</span>
+                <div class="pwa-tip-text">
+                    <h4>Instalar no Celular</h4>
+                    <p class="ios-instructions">Toque no botão de <b>Compartilhar</b> (ícone com seta para cima) e escolha <b>Adicionar à Tela de Início</b> para abrir como app.</p>
+                    <p class="android-instructions">Toque em <b>⋮</b> no canto do navegador e escolha <b>Adicionar à Tela inicial</b>.</p>
+                </div>
+            </div>
+            <button class="btn-close-tip" onclick="dismissPwaTip()" title="Fechar dica">&times;</button>
+        </div>
+
+        <!-- ABA 1: Visão Geral / Início (No desktop fica tudo unificado) -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="dashboard-grid">
+                <!-- Painel de Receitas -->
+                <div class="panel">
+                    <div class="panel-title">Fontes de Receita</div>
+                    <div id="incomes-container">
+                        <!-- Gerado pelo JavaScript -->
+                    </div>
+                    <button class="btn btn-add" style="margin-top: 10px; width: 100%; padding: 8px;" onclick="addIncomeRow()">+ Adicionar Renda</button>
+                </div>
+
+                <!-- Painel de Resumo e Gráfico -->
+                <div class="panel">
+                    <div class="panel-title" style="color: var(--tech-primary);">Resumo Financeiro</div>
+                    
+                    <div class="summary-item">
+                        <span class="summary-label">Receitas Totais</span>
+                        <span class="summary-value positive-text" id="summary-income">R$ 0,00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Despesas Totais</span>
+                        <span class="summary-value negative-text" id="summary-expense">R$ 0,00</span>
+                    </div>
+                    
+                    <!-- Barra de Saúde Financeira -->
+                    <div class="health-bar-container" title="Progresso de Gastos">
+                        <div class="health-bar-fill" id="health-bar"></div>
+                    </div>
+
+                    <div class="summary-item balance-total">
+                        <span class="summary-label">Saldo Disponível</span>
+                        <span class="summary-value" id="summary-balance">R$ 0,00</span>
+                    </div>
+
+                    <!-- Gráfico de Categorias -->
+                    <div class="chart-container">
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 2: Transações (No mobile vira outra aba dedicada) -->
+        <div id="tab-transactions" class="tab-content">
+            <!-- Tabela de Despesas -->
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 45%;">Descrição da Despesa</th>
+                        <th style="width: 25%;">Categoria</th>
+                        <th>Valor Previsto</th>
+                        <th style="width: 40px; text-align: center;"></th>
+                    </tr>
+                </thead>
+                <tbody id="expense-body">
+                    <!-- Gerado pelo JavaScript -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" style="text-align: right; letter-spacing: 1px;">TOTAL DE DESPESAS:</td>
+                        <td id="total-expense-table" colspan="2" class="negative-text" style="font-family: var(--font-numbers); font-size: 1.2em;">R$ 0,00</td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="actions">
+                <button class="btn btn-add" onclick="addExpenseRow()">+ Nova Despesa</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-csv" onclick="exportCSV()">Exportar Excel (CSV)</button>
+                    <button class="btn btn-save" onclick="exportPDF()">Exportar Relatório</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Barra de Navegação inferior no Mobile (Estilo App) -->
+    <nav class="mobile-nav">
+        <button class="mobile-nav-btn active" onclick="switchMobileTab('dashboard')" id="nav-btn-dashboard">
+            <svg viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            Início
+        </button>
+        <button class="mobile-nav-btn" onclick="switchMobileTab('transactions')" id="nav-btn-transactions">
+            <svg viewBox="0 0 24 24">
+                <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+            </svg>
+            Transações
+        </button>
+    </nav>
+
+    <script>
+        // --- 0. REGISTRO DO SERVICE WORKER (PWA) ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('Erro no Service Worker:', err));
+            });
+        }
+
+        // --- 1. CONFIGURAÇÕES GERAIS E DATA ---
+        let currentDate = new Date();
+        let myChart = null;
+        let isMobileLayout = window.innerWidth <= 768;
+
+        const categories = [
+            "🏠 Moradia", "🚗 Transporte", "🍔 Alimentação", 
+            "🛒 Compras", "🍿 Lazer", "🏥 Saúde", 
+            "🏦 Finanças", "📦 Outros"
+        ];
+
+        // --- 2. GESTÃO DE MESES E LOCALSTORAGE ---
+        function getStorageKey() {
+            const year = currentDate.getFullYear();
+            const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+            return `controlFinance_${year}_${month}`;
+        }
+
+        function changeMonth(offset) {
+            saveData(); // Salvar antes de mudar
+            currentDate.setMonth(currentDate.getMonth() + offset);
+            updateUI();
+        }
+
+        function formatMonthDisplay() {
+            const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
+            return formatter.format(currentDate);
+        }
+
+        // --- 3. CARREGAR E GUARDAR DADOS ---
+        function loadData() {
+            const key = getStorageKey();
+            const savedData = localStorage.getItem(key);
+            
+            const incomesContainer = document.getElementById('incomes-container');
+            const expenseBody = document.getElementById('expense-body');
+            
+            incomesContainer.innerHTML = '';
+            expenseBody.innerHTML = '';
+
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                // Carregar Receitas
+                if (data.incomes && data.incomes.length > 0) {
+                    data.incomes.forEach(inc => addIncomeRow(inc.name, inc.value));
+                } else {
+                    setupDefaultIncomes();
+                }
+                // Carregar Despesas
+                if (data.expenses && data.expenses.length > 0) {
+                    data.expenses.forEach(exp => addExpenseRow(exp.name, exp.category, exp.value));
+                } else {
+                    addExpenseRow('', '', ''); // Uma linha vazia
+                }
+            } else {
+                setupDefaultIncomes();
+                addExpenseRow('', '', '');
+                addExpenseRow('', '', '');
+            }
+        }
+
+        function setupDefaultIncomes() {
+            addIncomeRow('Meu Salário', '');
+            addIncomeRow('Outros Rendimentos', '');
+        }
+
+        function saveData() {
+            const key = getStorageKey();
+            
+            const incomes = [];
+            document.querySelectorAll('.income-row').forEach(row => {
+                const nameInput = row.querySelector('.income-name');
+                const valInput = row.querySelector('.income-value');
+                if (nameInput && valInput) {
+                    incomes.push({
+                        name: nameInput.value,
+                        value: valInput.value
+                    });
+                }
+            });
+
+            const expenses = [];
+            document.querySelectorAll('#expense-body tr').forEach(row => {
+                const nameInput = row.querySelector('.expense-name');
+                const catInput = row.querySelector('.expense-category');
+                const valInput = row.querySelector('.expense-value');
+                if (nameInput && catInput && valInput) {
+                    expenses.push({
+                        name: nameInput.value,
+                        category: catInput.value,
+                        value: valInput.value
+                    });
+                }
+            });
+
+            localStorage.setItem(key, JSON.stringify({ incomes, expenses }));
+        }
+
+        // --- 4. CONSTRUÇÃO DO DOM (HTML) ---
+        function addIncomeRow(name = '', value = '') {
+            const container = document.getElementById('incomes-container');
+            const div = document.createElement('div');
+            div.className = 'income-row';
+            div.innerHTML = `
+                <input type="text" class="income-name flex-2" placeholder="Ex: Salário" value="${name}" oninput="triggerUpdate()">
+                <input type="number" class="income-value flex-1" min="0" placeholder="0,00" value="${value}" oninput="triggerUpdate()">
+                <button class="btn-remove" onclick="this.parentElement.remove(); triggerUpdate();" title="Remover">&times;</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function addExpenseRow(name = '', category = '', value = '') {
+            const tbody = document.getElementById('expense-body');
+            const tr = document.createElement('tr');
+            
+            let optionsHTML = categories.map(cat => 
+                `<option value="${cat}" ${category === cat ? 'selected' : ''}>${cat}</option>`
+            ).join('');
+
+            tr.innerHTML = `
+                <td data-label="Descrição da Despesa"><input type="text" class="expense-name" placeholder="Descrição..." value="${name}" oninput="triggerUpdate()"></td>
+                <td data-label="Categoria">
+                    <select class="expense-category" onchange="triggerUpdate()">
+                        <option value="Sem Categoria" ${category === '' ? 'selected' : ''}>Selecionar...</option>
+                        ${optionsHTML}
+                    </select>
+                </td>
+                <td data-label="Valor Previsto"><input type="number" class="expense-value" min="0" placeholder="0,00" value="${value}" oninput="triggerUpdate()"></td>
+                <td style="text-align: center;"><button class="btn-remove" onclick="this.closest('tr').remove(); triggerUpdate();" title="Remover">&times;</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        // --- 5. LÓGICA MATEMÁTICA E GRÁFICOS ---
+        function triggerUpdate() {
+            saveData(); // Salvar imediatamente
+            calculateAndDraw(); // Recalcular tudo
+        }
+
+        function formatMoney(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        function calculateAndDraw() {
+            let totalIncome = 0;
+            document.querySelectorAll('.income-value').forEach(input => {
+                totalIncome += parseFloat(input.value) || 0;
+            });
+            
+            let totalExpenses = 0;
+            const categoryTotals = {};
+            
+            document.querySelectorAll('#expense-body tr').forEach(row => {
+                const valInput = row.querySelector('.expense-value');
+                const catInput = row.querySelector('.expense-category');
+                
+                if (valInput && catInput) {
+                    const val = parseFloat(valInput.value) || 0;
+                    const cat = catInput.value || "Outros";
+                    totalExpenses += val;
+                    
+                    if(val > 0) {
+                        categoryTotals[cat] = (categoryTotals[cat] || 0) + val;
+                    }
+                }
+            });
+            
+            const remainingBalance = totalIncome - totalExpenses;
+
+            // Atualizar Textos
+            document.getElementById('summary-income').textContent = formatMoney(totalIncome);
+            document.getElementById('summary-expense').textContent = formatMoney(totalExpenses);
+            document.getElementById('total-expense-table').textContent = formatMoney(totalExpenses);
+            
+            const balanceElement = document.getElementById('summary-balance');
+            balanceElement.textContent = formatMoney(remainingBalance);
+            balanceElement.className = 'summary-value ' + (remainingBalance >= 0 ? 'positive-text' : 'negative-text');
+
+            // Atualizar Barra de Saúde
+            updateHealthBar(totalIncome, totalExpenses);
+
+            // Atualizar Gráfico
+            updateChart(categoryTotals);
+        }
+
+        function updateHealthBar(income, expense) {
+            const bar = document.getElementById('health-bar');
+            if (income === 0) {
+                bar.style.width = '0%';
+                return;
+            }
+            
+            let percent = (expense / income) * 100;
+            if (percent > 100) percent = 100;
+            
+            bar.style.width = `${percent}%`;
+            
+            if (percent < 60) {
+                bar.style.background = 'var(--positive)';
+                bar.style.boxShadow = '0 0 10px var(--positive)';
+            } else if (percent < 90) {
+                bar.style.background = 'var(--warning)';
+                bar.style.boxShadow = '0 0 10px var(--warning)';
+            } else {
+                bar.style.background = 'var(--negative)';
+                bar.style.boxShadow = '0 0 10px var(--negative)';
+            }
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            const colors = ['#00d2ff', '#3a7bd5', '#8a2be2', '#ff007f', '#48bb78', '#ecc94b', '#f56565', '#a0aec0'];
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            if(values.length === 0) {
+                // Gráfico vazio (placeholder)
+                myChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#2d3748'], borderWidth: 0 }] },
+                    options: { cutout: '80%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+                });
+                return;
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#1a202c'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { 
+                            position: isMobileLayout ? 'bottom' : 'right', 
+                            labels: { color: '#e2e8f0', font: { family: "'Inter', sans-serif", size: 11 } } 
+                        }
+                    }
+                }
+            });
+        }
+
+        // Navegação de Abas no Mobile
+        function switchMobileTab(targetTab) {
+            if (!isMobileLayout) return;
+
+            // Altera abas ativas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(`tab-${targetTab}`).classList.add('active');
+
+            // Altera botões de navegação ativos
+            document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`nav-btn-${targetTab}`).classList.add('active');
+
+            // Força remontagem do gráfico para ajustar à nova proporção visível
+            if (targetTab === 'dashboard') {
+                calculateAndDraw();
+            }
+        }
+
+        // Monitorar redimensionamento e reorganizar elementos se necessário
+        function handleLayoutChange() {
+            const wasMobile = isMobileLayout;
+            isMobileLayout = window.innerWidth <= 768;
+
+            if (!isMobileLayout) {
+                // Se voltou para desktop, exibe todas as sessões juntas de novo
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.add('active');
+                });
+            } else if (!wasMobile && isMobileLayout) {
+                // Se mudou para mobile, volta a exibir a aba "Início" ativa por padrão
+                switchMobileTab('dashboard');
+            }
+            calculateAndDraw();
+        }
+
+        function updateUI() {
+            document.getElementById('current-month-display').textContent = formatMonthDisplay();
+            loadData();
+            calculateAndDraw();
+        }
+
+        // --- 6. EXPORTAÇÕES ---
+        function exportCSV() {
+            let csv = "\uFEFF"; // BOM para UTF-8 compatível com Excel
+            csv += `Relatório Financeiro: ${formatMonthDisplay()}\n\n`;
+            csv += "TIPO;NOME;CATEGORIA;VALOR\n";
+            
+            document.querySelectorAll('.income-row').forEach(row => {
+                const nameInput = row.querySelector('.income-name');
+                const valInput = row.querySelector('.income-value');
+                if (nameInput && valInput) {
+                    const name = nameInput.value || 'Receita';
+                    const val = valInput.value || 0;
+                    csv += `Receita;${name};-;${val}\n`;
+                }
+            });
+
+            document.querySelectorAll('#expense-body tr').forEach(row => {
+                const nameInput = row.querySelector('.expense-name');
+                const catInput = row.querySelector('.expense-category');
+                const valInput = row.querySelector('.expense-value');
+                if (nameInput && catInput && valInput) {
+                    const name = nameInput.value || 'Despesa';
+                    const cat = catInput.value;
+                    const val = valInput.value || 0;
+                    csv += `Despesa;${name};${cat};${val}\n`;
+                }
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `ControlFinance_${getStorageKey()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportPDF() {
+            const monthStr = formatMonthDisplay();
+            const totalInc = document.getElementById('summary-income').textContent;
+            const totalExp = document.getElementById('summary-expense').textContent;
+            const balance = document.getElementById('summary-balance').textContent;
+            const isPos = !document.getElementById('summary-balance').classList.contains('negative-text');
+
+            let incHtml = '', expHtml = '';
+            document.querySelectorAll('.income-row').forEach(r => {
+                const nameInput = r.querySelector('.income-name');
+                const valInput = r.querySelector('.income-value');
+                if (nameInput && valInput) {
+                    const n = nameInput.value, v = parseFloat(valInput.value) || 0;
+                    if(v>0) incHtml += `<tr><td>${n||'Receita'}</td><td style="text-align:right;color:#48bb78">+ ${formatMoney(v)}</td></tr>`;
+                }
+            });
+            document.querySelectorAll('#expense-body tr').forEach(r => {
+                const nameInput = r.querySelector('.expense-name');
+                const catInput = r.querySelector('.expense-category');
+                const valInput = r.querySelector('.expense-value');
+                if (nameInput && catInput && valInput) {
+                    const n = nameInput.value, c = catInput.value, v = parseFloat(valInput.value) || 0;
+                    if(v>0) expHtml += `<tr><td>${n||'Despesa'} <small style="color:#a0aec0">(${c})</small></td><td style="text-align:right;color:#f56565">- ${formatMoney(v)}</td></tr>`;
+                }
+            });
+
+            const html = `<!DOCTYPE html><html><head><title>Relatório ${monthStr}</title>
+            <style>body{font-family:sans-serif;background:#1a202c;color:#e2e8f0;padding:40px}
+            .box{max-width:700px;margin:auto;background:#2d3748;padding:40px;border-radius:12px;border-top:4px solid #00d2ff}
+            h1{color:#00d2ff;text-align:center} .grid{display:flex;gap:20px;margin:30px 0}
+            .card{flex:1;background:#1a202c;padding:20px;text-align:center;border-radius:8px}
+            table{width:100%;border-collapse:collapse;margin-bottom:30px}
+            th,td{padding:10px;border-bottom:1px solid #4a5568} th{text-align:left}</style>
+            </head><body><div class="box"><h1>Control Finance - ${monthStr}</h1>
+            <div class="grid">
+            <div class="card"><small>Receitas</small><br><b style="color:#48bb78">${totalInc}</b></div>
+            <div class="card"><small>Despesas</small><br><b style="color:#f56565">${totalExp}</b></div>
+            <div class="card"><small>Saldo</small><br><b style="color:${isPos?'#48bb78':'#f56565'}">${balance}</b></div>
+            </div>
+            <table><tr><th>Receitas</th><th>Valor</th></tr>${incHtml||'<tr><td>Vazio</td></tr>'}</table>
+            <table><tr><th>Despesas</th><th>Valor</th></tr>${expHtml||'<tr><td>Vazio</td></tr>'}</table>
+            </div></body></html>`;
+
+            const blob = new Blob([html], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Relatorio_${getStorageKey()}.html`;
+            a.click();
+        }
+
+        // --- 7. DETECÇÃO INTELIGENTE DE STANDALONE / APP INSTALADO ---
+        function checkPwaTip() {
+            const tipElement = document.getElementById('pwa-install-tip');
+            const dismissed = localStorage.getItem('control_finance_pwa_dismissed');
+
+            // Verifica se o App já está rodando standalone (salvo na tela inicial como app)
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+            if (isStandalone) {
+                // Se já estiver rodando como app independente, nunca exibe o banner de ajuda
+                if (tipElement) tipElement.style.display = 'none';
+                return;
+            }
+
+            if (dismissed === 'true' && tipElement) {
+                tipElement.style.display = 'none';
+            } else if (tipElement) {
+                tipElement.style.display = 'flex';
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                
+                if (isIOS) {
+                    tipElement.querySelector('.android-instructions').style.display = 'none';
+                } else {
+                    tipElement.querySelector('.ios-instructions').style.display = 'none';
+                }
+            }
+        }
+
+        function dismissPwaTip() {
+            localStorage.setItem('control_finance_pwa_dismissed', 'true');
+            const tipElement = document.getElementById('pwa-install-tip');
+            if (tipElement) {
+                tipElement.style.transition = 'all 0.3s ease';
+                tipElement.style.opacity = '0';
+                tipElement.style.transform = 'translateY(-10px)';
+                setTimeout(() => tipElement.style.display = 'none', 300);
+            }
+        }
+
+        // --- 8. INICIALIZAÇÃO ---
+        window.onload = () => {
+            handleLayoutChange();
+            updateUI();
+            checkPwaTip();
+        };
+
+        window.onresize = () => {
+            handleLayoutChange();
+        };
+    </script>
+</body>
+</html>
