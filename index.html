@@ -1109,15 +1109,24 @@
                         // Carregar dados na nuvem e no LocalStorage
                         loadDataFromFirestore();
                     } else {
-                        // Se deslogou por completo, reautentica anonimamente por segurança de leitura
                         authUser = null;
                         updateSyncStatus('offline');
                         document.getElementById('auth-status-text').textContent = "Criar Conta / Entrar";
                         
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
+                        try {
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (authErr) {
+                            console.error("Erro ao conectar anonimamente:", authErr);
+                            if (authErr.code === "auth/operation-not-allowed") {
+                                showNotification("⚠️ O 'Login Anônimo' está desativado no seu Firebase Console. Para que o salvamento automático funcione, acesse o painel do Firebase e ative 'Anonymous' e 'E-mail/Senha' na aba Authentication > Sign-in method!");
+                            } else {
+                                showNotification("Erro de conexão na nuvem: " + authErr.message);
+                            }
+                            updateSyncStatus('offline');
                         }
                     }
                 });
@@ -1206,6 +1215,8 @@
                 console.error(err);
                 if (err.code === "auth/email-already-in-use") {
                     showNotification("Este e-mail já está cadastrado. Faça login na conta existente.");
+                } else if (err.code === "auth/operation-not-allowed") {
+                    showNotification("⚠️ Provedor desativado! Ative o método 'E-mail/Senha' na aba 'Authentication > Sign-in method' no seu Firebase Console.");
                 } else if (err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
                     showNotification("E-mail ou senha incorretos.");
                 } else {
