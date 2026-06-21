@@ -149,6 +149,13 @@
             gap: 8px;
         }
 
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         h2 {
             margin: 0;
             font-weight: 800;
@@ -195,6 +202,18 @@
 
         .sync-badge.error { color: var(--negative); border-color: rgba(255, 23, 68, 0.15); background: rgba(255, 23, 68, 0.02); }
         .sync-badge.error .sync-dot { background-color: var(--negative); box-shadow: 0 0 8px var(--negative); }
+
+        .sync-badge.auth-btn {
+            background-color: rgba(0, 229, 255, 0.05);
+            border-color: rgba(0, 229, 255, 0.2);
+            color: var(--tech-primary);
+            cursor: pointer;
+        }
+        .sync-badge.auth-btn:hover {
+            background-color: rgba(0, 229, 255, 0.1);
+            border-color: var(--tech-primary);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+        }
 
         @keyframes pulse {
             0%, 100% { opacity: 0.4; transform: scale(0.9); }
@@ -296,7 +315,7 @@
             width: 100%;
         }
 
-        input[type="text"], input[type="number"], select {
+        input[type="text"], input[type="number"], input[type="email"], input[type="password"], select {
             width: 100%;
             padding: 12px 14px;
             box-sizing: border-box;
@@ -599,6 +618,7 @@
             text-align: center;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02);
             box-sizing: border-box;
+            position: relative;
         }
         .modal-content h2 { color: var(--tech-primary); margin-bottom: 15px; font-size: 1.6em; }
         .modal-content p { color: var(--text-main); margin-bottom: 25px; line-height: 1.6; font-size: 0.95em; }
@@ -636,6 +656,11 @@
                 text-align: center;
                 padding-bottom: 16px;
                 margin-bottom: 20px;
+            }
+
+            .header-actions {
+                justify-content: center;
+                width: 100%;
             }
 
             .month-selector {
@@ -829,10 +854,16 @@
         <div class="header-section">
             <div class="title-area">
                 <h2>Control Finance</h2>
-                <!-- Sincronização em tempo real -->
-                <div id="sync-badge" class="sync-badge offline">
-                    <span class="sync-dot"></span>
-                    <span id="sync-text">Modo Local (Offline)</span>
+                <!-- Sincronização em tempo real e Login -->
+                <div class="header-actions">
+                    <div id="sync-badge" class="sync-badge offline">
+                        <span class="sync-dot"></span>
+                        <span id="sync-text">Modo Local (Offline)</span>
+                    </div>
+                    <div id="auth-status-badge" class="sync-badge auth-btn" onclick="openAuthModal()">
+                        <span class="sync-dot" style="background-color: var(--tech-primary);"></span>
+                        <span id="auth-status-text">Criar Conta / Entrar</span>
+                    </div>
                 </div>
             </div>
             
@@ -961,6 +992,33 @@
         </div>
     </div>
 
+    <!-- Modal do Sistema de Autenticação (Login/Cadastro) -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="auth-modal-title">Acessar Sua Conta</h2>
+            <p id="auth-modal-desc">Crie uma conta gratuita para salvar e acessar seus dados do celular ou de qualquer outro aparelho!</p>
+            
+            <div id="auth-logged-out-view" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 15px;">
+                <input type="email" id="auth-email-input" placeholder="Seu e-mail de acesso">
+                <input type="password" id="auth-password-input" placeholder="Sua senha secreta">
+                <button id="auth-primary-btn" class="modal-button" onclick="handleAuthSubmit()">Entrar</button>
+                
+                <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 10px;">
+                    <span id="auth-toggle-msg">Ainda não tem conta?</span>
+                    <a href="#" id="auth-toggle-link" style="color: var(--tech-primary); text-decoration: none; font-weight: 700;" onclick="toggleAuthMode(event)">Criar Conta Grátis</a>
+                </p>
+            </div>
+
+            <div id="auth-logged-in-view" style="display: none; flex-direction: column; gap: 14px; margin-bottom: 15px;">
+                <p style="font-weight: 600;">Você está conectado como:</p>
+                <p id="auth-logged-email" style="font-family: var(--font-numbers); color: var(--tech-primary); font-size: 1.1em;"></p>
+                <button class="modal-button" style="background: var(--negative);" onclick="handleSignOut()">Sair da Conta (Logout)</button>
+            </div>
+
+            <button class="btn-close-tip" style="position: absolute; top: 15px; right: 15px;" onclick="closeAuthModal()" title="Fechar">&times;</button>
+        </div>
+    </div>
+
     <!-- Barra de Navegação inferior no Mobile (Estilo App) -->
     <nav class="mobile-nav">
         <button class="mobile-nav-btn active" onclick="switchMobileTab('dashboard')" id="nav-btn-dashboard">
@@ -980,10 +1038,30 @@
     <!-- Firebase v11 (ES Modules Moderne CDN) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- 1. CONFIGURAÇÃO DO FIREBASE (Modernizado e Protegido pelas regras globais) ---
+        // --- SISTEMA DE STORAGE ROBUSTO CONTRA BLOQUEIO DE IFRAME (localStorage Fallback) ---
+        const safeStorage = {
+            getItem(key) {
+                try { return localStorage.getItem(key); } catch(e) { return this.fallback[key] || null; }
+            },
+            setItem(key, val) {
+                try { localStorage.setItem(key, val); } catch(e) { this.fallback[key] = String(val); }
+            },
+            removeItem(key) {
+                try { localStorage.removeItem(key); } catch(e) { delete this.fallback[key]; }
+            },
+            key(index) {
+                try { return localStorage.key(index); } catch(e) { return Object.keys(this.fallback)[index] || null; }
+            },
+            getLength() {
+                try { return localStorage.length; } catch(e) { return Object.keys(this.fallback).length; }
+            },
+            fallback: {}
+        };
+
+        // --- 1. CONFIGURAÇÃO DO FIREBASE ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'control-finance-app';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyDwL0he80KoUaqlvKJTw-_umhda2UMqXCE",
@@ -999,19 +1077,7 @@
         let auth = null;
         let authUser = null;
         let firebaseSaveTimeout = null;
-
-        // Tornar funções globais visíveis para o HTML onclick tradicional
-        window.changeMonth = changeMonth;
-        window.addIncomeRow = addIncomeRow;
-        window.addExpenseRow = addExpenseRow;
-        window.triggerUpdate = triggerUpdate;
-        window.switchMobileTab = switchMobileTab;
-        window.triggerImport = triggerImport;
-        window.importBackupJSON = importBackupJSON;
-        window.exportBackupJSON = exportBackupJSON;
-        window.exportPDF = exportPDF;
-        window.dismissPwaTip = dismissPwaTip;
-        window.updateSavingGoal = updateSavingGoal;
+        let authMode = "login"; // "login" ou "register"
 
         async function initFirebase() {
             if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "SUA_API_KEY_AQUI") {
@@ -1025,27 +1091,139 @@
 
                 updateSyncStatus('loading');
 
-                // REGRA 3: Autenticar obrigatoriamente antes de realizar qualquer transação com o Firestore
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
+                // Escutar mudanças de autenticação (Garante Login Anónimo por padrão se não logado)
+                onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         authUser = user;
                         updateSyncStatus('synced');
-                        // Carregar os registros na nuvem e atualizar o LocalStorage
+                        
+                        // Atualizar interface de login de forma segura contra e-mails nulos (Login Anónimo)
+                        const authBtnText = document.getElementById('auth-status-text');
+                        const email = user.email;
+                        if (email && email.includes('@')) {
+                            authBtnText.textContent = email.split('@')[0].toUpperCase();
+                        } else {
+                            authBtnText.textContent = "Criar Conta / Entrar";
+                        }
+
+                        // Carregar dados na nuvem e no LocalStorage
                         loadDataFromFirestore();
                     } else {
+                        // Se deslogou por completo, reautentica anonimamente por segurança de leitura
                         authUser = null;
                         updateSyncStatus('offline');
+                        document.getElementById('auth-status-text').textContent = "Criar Conta / Entrar";
+                        
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
                     }
                 });
             } catch (e) {
                 console.warn("Utilizando em modo local offline:", e);
                 updateSyncStatus('offline');
+            }
+        }
+
+        // --- SISTEMA DE LOGIN E CADASTRO ---
+        function openAuthModal() {
+            if (authUser && !authUser.isAnonymous) {
+                document.getElementById('auth-logged-out-view').style.display = 'none';
+                document.getElementById('auth-logged-in-view').style.display = 'flex';
+                document.getElementById('auth-logged-email').textContent = authUser.email;
+                document.getElementById('auth-modal-title').textContent = "Sua Conta Ativa";
+                document.getElementById('auth-modal-desc').textContent = "Você está conectado com sucesso e seus dados estão protegidos na nuvem.";
+            } else {
+                document.getElementById('auth-logged-out-view').style.display = 'flex';
+                document.getElementById('auth-logged-in-view').style.display = 'none';
+                document.getElementById('auth-modal-title').textContent = "Acessar Sua Conta";
+                setAuthMode("login");
+            }
+            document.getElementById('auth-modal').style.display = 'flex';
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').style.display = 'none';
+        }
+
+        function toggleAuthMode(e) {
+            e.preventDefault();
+            setAuthMode(authMode === "login" ? "register" : "login");
+        }
+
+        function setAuthMode(mode) {
+            authMode = mode;
+            const title = document.getElementById('auth-modal-title');
+            const desc = document.getElementById('auth-modal-desc');
+            const submitBtn = document.getElementById('auth-primary-btn');
+            const toggleMsg = document.getElementById('auth-toggle-msg');
+            const toggleLink = document.getElementById('auth-toggle-link');
+
+            if (mode === "login") {
+                title.textContent = "Acessar Sua Conta";
+                desc.textContent = "Faça login para sincronizar os dados digitados em outros aparelhos.";
+                submitBtn.textContent = "Entrar";
+                toggleMsg.textContent = "Ainda não tem conta? ";
+                toggleLink.textContent = "Criar Conta Grátis";
+            } else {
+                title.textContent = "Criar Nova Conta";
+                desc.textContent = "Seus dados de Junho/2026 salvos localmente serão transferidos para sua nova conta automaticamente!";
+                submitBtn.textContent = "Cadastrar & Salvar";
+                toggleMsg.textContent = "Já possui uma conta? ";
+                toggleLink.textContent = "Fazer Login";
+            }
+        }
+
+        async function handleAuthSubmit() {
+            const email = document.getElementById('auth-email-input').value.trim();
+            const password = document.getElementById('auth-password-input').value;
+
+            if (!email || !password) {
+                showNotification("Por favor, preencha todos os campos.");
+                return;
+            }
+            if (password.length < 6) {
+                showNotification("A senha deve conter no mínimo 6 caracteres.");
+                return;
+            }
+
+            try {
+                updateSyncStatus('loading');
+                if (authMode === "login") {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    showNotification("Login realizado com sucesso! Seus dados foram sincronizados.");
+                } else {
+                    // Cadastra nova conta oficial
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    // Força a gravação imediata do LocalStorage atual para a nova conta
+                    await saveDataToFirestore();
+                    showNotification("Sua conta foi criada com sucesso! Seus dados locais já estão seguros na nuvem.");
+                }
+                closeAuthModal();
+            } catch (err) {
+                console.error(err);
+                if (err.code === "auth/email-already-in-use") {
+                    showNotification("Este e-mail já está cadastrado. Faça login na conta existente.");
+                } else if (err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
+                    showNotification("E-mail ou senha incorretos.");
+                } else {
+                    showNotification("Falha na autenticação: " + err.message);
+                }
+                updateSyncStatus('offline');
+            }
+        }
+
+        async function handleSignOut() {
+            try {
+                updateSyncStatus('loading');
+                await signOut(auth);
+                showNotification("Você desconectou do sistema. O aplicativo voltou a rodar no Modo Local.");
+                closeAuthModal();
+                updateUI();
+            } catch (err) {
+                showNotification("Erro ao desconectar da conta.");
             }
         }
 
@@ -1102,15 +1280,13 @@
             const key = getStorageKey();
             
             // --- CORREÇÃO AUTOMÁTICA DE SOBREPOSIÇÃO DE MEMÓRIA (LUIZ) ---
-            // Se o mês for Junho de 2026 e nunca tivermos integrado o relatório real do Luiz nesta máquina,
-            // nós limpamos o rascunho anterior e forçamos a integração dos dados oficiais.
-            if (key === 'controlFinance_2026_06' && !localStorage.getItem('control_finance_junho_2026_integrado')) {
-                localStorage.removeItem(key); // Remove rascunhos em branco antigos
-                setupDefaultDemoData();       // Carrega o seu relatório oficial
-                localStorage.setItem('control_finance_junho_2026_integrado', 'true'); // Marca como feito
+            if (key === 'controlFinance_2026_06' && !safeStorage.getItem('control_finance_junho_2026_integrado')) {
+                safeStorage.removeItem(key); // Remove rascunhos antigos em branco de teste
+                setupDefaultDemoData();       // Carrega o seu relatório oficial real
+                safeStorage.setItem('control_finance_junho_2026_integrado', 'true'); // Marca como feito
             }
 
-            const savedData = localStorage.getItem(key);
+            const savedData = safeStorage.getItem(key);
             const incomesContainer = document.getElementById('incomes-container');
             const expenseBody = document.getElementById('expense-body');
             
@@ -1118,7 +1294,7 @@
             expenseBody.innerHTML = '';
 
             // Carrega valor da meta de poupança definida para este mês (padrão 20%)
-            const savedGoal = localStorage.getItem(`${key}_saving_goal`) || "20";
+            const savedGoal = safeStorage.getItem(`${key}_saving_goal`) || "20";
             document.getElementById('saving-goal-slider').value = savedGoal;
             document.getElementById('goal-percentage-display').textContent = `${savedGoal}%`;
 
@@ -1135,7 +1311,6 @@
                     addExpenseRow('', '', ''); 
                 }
             } else {
-                // Configuração caso seja outro mês qualquer que não esteja salvo
                 setupDefaultIncomes();
                 addExpenseRow('', '', '');
             }
@@ -1145,14 +1320,14 @@
             if (!authUser || !db) return;
             const key = getStorageKey();
             
-            // REGRA 1: Caminho estrito de dados privados
+            // REGRA 1: Caminho estrito de dados privados baseado no UID ativo
             const docRef = doc(db, 'artifacts', appId, 'users', authUser.uid, 'monthlyRecords', key);
             
             try {
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const cloudData = docSnap.data();
-                    const localDataRaw = localStorage.getItem(key);
+                    const localDataRaw = safeStorage.getItem(key);
                     
                     if (localDataRaw) {
                         const localData = JSON.parse(localDataRaw);
@@ -1161,28 +1336,28 @@
                         const localIncomesCount = (localData.incomes || []).length;
                         const localExpensesCount = (localData.expenses || []).length;
 
-                        // Se a nuvem contiver dados válidos e o local estiver vazio, prioriza a nuvem
+                        // Se a nuvem tiver dados de verdade e a máquina local estiver vazia, prioriza a nuvem
                         if (cloudIncomesCount > 0 || cloudExpensesCount > 0) {
-                            localStorage.setItem(key, JSON.stringify(cloudData));
+                            safeStorage.setItem(key, JSON.stringify(cloudData));
                             if (cloudData.savingGoal) {
-                                localStorage.setItem(`${key}_saving_goal`, cloudData.savingGoal);
+                                safeStorage.setItem(`${key}_saving_goal`, cloudData.savingGoal);
                             }
                         } else if (localIncomesCount > 0 || localExpensesCount > 0) {
-                            // Se o local tiver dados e a nuvem estiver vazia, sincroniza para o servidor
-                            const localGoal = localStorage.getItem(`${key}_saving_goal`) || "20";
+                            // Se o local tiver dados (digitou no celular ou PC) e a nuvem estiver limpa, joga pra nuvem
+                            const localGoal = safeStorage.getItem(`${key}_saving_goal`) || "20";
                             await setDoc(docRef, { ...localData, savingGoal: localGoal });
                         }
                     } else {
-                        localStorage.setItem(key, JSON.stringify(cloudData));
+                        safeStorage.setItem(key, JSON.stringify(cloudData));
                         if (cloudData.savingGoal) {
-                            localStorage.setItem(`${key}_saving_goal`, cloudData.savingGoal);
+                            safeStorage.setItem(`${key}_saving_goal`, cloudData.savingGoal);
                         }
                     }
                 } else {
-                    // Se não existir, gera o primeiro registro baseado no LocalStorage
-                    const localDataRaw = localStorage.getItem(key);
+                    // Documento novo na nuvem: atualiza com os dados locais
+                    const localDataRaw = safeStorage.getItem(key);
                     if (localDataRaw) {
-                        const localGoal = localStorage.getItem(`${key}_saving_goal`) || "20";
+                        const localGoal = safeStorage.getItem(`${key}_saving_goal`) || "20";
                         await setDoc(docRef, { ...JSON.parse(localDataRaw), savingGoal: localGoal });
                     }
                 }
@@ -1200,12 +1375,12 @@
             const key = getStorageKey();
             const docRef = doc(db, 'artifacts', appId, 'users', authUser.uid, 'monthlyRecords', key);
                                  
-            const localDataRaw = localStorage.getItem(key);
+            const localDataRaw = safeStorage.getItem(key);
             if (!localDataRaw) return;
 
             try {
                 updateSyncStatus('saving');
-                const savingGoal = localStorage.getItem(`${key}_saving_goal`) || "20";
+                const savingGoal = safeStorage.getItem(`${key}_saving_goal`) || "20";
                 const payload = { ...JSON.parse(localDataRaw), savingGoal };
                 await setDoc(docRef, payload);
                 updateSyncStatus('synced');
@@ -1283,7 +1458,7 @@
                 }
             });
 
-            localStorage.setItem(key, JSON.stringify({ incomes, expenses }));
+            safeStorage.setItem(key, JSON.stringify({ incomes, expenses }));
         }
 
         // --- 5. CONSTRUÇÃO DINÂMICA DO DOM (HTML) ---
@@ -1339,7 +1514,7 @@
 
         function updateSavingGoal(value) {
             const key = getStorageKey();
-            localStorage.setItem(`${key}_saving_goal`, value);
+            safeStorage.setItem(`${key}_saving_goal`, value);
             document.getElementById('goal-percentage-display').textContent = `${value}%`;
             calculateAndDraw();
             triggerUpdate();
@@ -1514,9 +1689,6 @@
             document.getElementById('notification-message').textContent = message;
             document.getElementById('notification-modal').style.display = 'flex';
         }
-        document.getElementById('notification-ok-btn').addEventListener('click', () => {
-            document.getElementById('notification-modal').style.display = 'none';
-        });
 
         // --- 7. SISTEMA DE IMPORTAÇÃO E EXPORTAÇÃO COMPLETA (JSON Sincronizado) ---
         function triggerImport() {
@@ -1536,7 +1708,7 @@
                     for (const key in importedData) {
                         if (key.startsWith('controlFinance_')) {
                             isValid = true;
-                            localStorage.setItem(key, JSON.stringify(importedData[key]));
+                            safeStorage.setItem(key, JSON.stringify(importedData[key]));
                             
                             // Se a nuvem do Firebase estiver ativa, sincroniza o histórico importado
                             if (authUser && db) {
@@ -1563,11 +1735,11 @@
 
         function exportBackupJSON() {
             const backupData = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                const lsKey = localStorage.key(i);
-                if (lsKey.startsWith('controlFinance_')) {
+            for (let i = 0; i < safeStorage.getLength(); i++) {
+                const lsKey = safeStorage.key(i);
+                if (lsKey && lsKey.startsWith('controlFinance_')) {
                     try {
-                        backupData[lsKey] = JSON.parse(localStorage.getItem(lsKey));
+                        backupData[lsKey] = JSON.parse(safeStorage.getItem(lsKey));
                     } catch(e) {}
                 }
             }
@@ -1705,7 +1877,7 @@
         // --- 8. DETECÇÃO INTELIGENTE DE STANDALONE / APP INSTALADO ---
         function checkPwaTip() {
             const tipElement = document.getElementById('pwa-install-tip');
-            const dismissed = localStorage.getItem('control_finance_pwa_dismissed');
+            const dismissed = safeStorage.getItem('control_finance_pwa_dismissed');
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
             if (isStandalone) {
@@ -1729,7 +1901,7 @@
         }
 
         function dismissPwaTip() {
-            localStorage.setItem('control_finance_pwa_dismissed', 'true');
+            safeStorage.setItem('control_finance_pwa_dismissed', 'true');
             const tipElement = document.getElementById('pwa-install-tip');
             if (tipElement) {
                 tipElement.style.transition = 'all 0.3s ease';
@@ -1739,7 +1911,26 @@
             }
         }
 
-        // --- 9. INICIALIZAÇÃO ---
+        // --- 9. CONFIGURAÇÃO DE ATRIBUIÇÕES DO OBJETO WINDOW ---
+        // Atribuição no final do ficheiro para segurança absoluta de hoisting
+        window.changeMonth = changeMonth;
+        window.addIncomeRow = addIncomeRow;
+        window.addExpenseRow = addExpenseRow;
+        window.triggerUpdate = triggerUpdate;
+        window.switchMobileTab = switchMobileTab;
+        window.triggerImport = triggerImport;
+        window.importBackupJSON = importBackupJSON;
+        window.exportBackupJSON = exportBackupJSON;
+        window.exportPDF = exportPDF;
+        window.dismissPwaTip = dismissPwaTip;
+        window.updateSavingGoal = updateSavingGoal;
+        window.openAuthModal = openAuthModal;
+        window.closeAuthModal = closeAuthModal;
+        window.toggleAuthMode = toggleAuthMode;
+        window.handleAuthSubmit = handleAuthSubmit;
+        window.handleSignOut = handleSignOut;
+
+        // --- 10. INICIALIZAÇÃO ---
         window.addEventListener('load', () => {
             handleLayoutChange();
             updateUI();
